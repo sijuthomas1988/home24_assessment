@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Page Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .error {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #eee;
+        }
+
+        .results h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-item h3 {
+            color: #555;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .result-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .result-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .result-item li {
+            padding: 4px 0;
+            color: #666;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge.success {
+            background: #10b981;
+        }
+
+        .badge.warning {
+            background: #f59e0b;
+        }
+
+        .badge.danger {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Page Analyzer</h1>
+
+        <form method="POST" action="/">
+            <div class="form-group">
+                <label for="url">Enter URL to analyze:</label>
+                <input
+                    type="text"
+                    id="url"
+                    name="url"
+                    placeholder="https://example.com"
+                    required
+                    value="{{if .URL}}{{.URL}}{{end}}"
+                >
+            </div>
+            <button type="submit">Analyze</button>
+        </form>
+
+        {{if .Error}}
+        <div class="error">
+            <strong>Error:</strong> {{.Error}}
+        </div>
+        {{end}}
+
+        {{if and (not .Error) .URL}}
+        <div class="results">
+            <h2>Analysis Results</h2>
+
+            <div class="result-item">
+                <h3>URL</h3>
+                <p>{{.URL}}</p>
+            </div>
+
+            <div class="result-item">
+                <h3>HTML Version</h3>
+                <p><span class="badge">{{.HTMLVersion}}</span></p>
+            </div>
+
+            <div class="result-item">
+                <h3>Page Title</h3>
+                <p>{{if .Title}}{{.Title}}{{else}}No title found{{end}}</p>
+            </div>
+
+            <div class="result-item">
+                <h3>Headings</h3>
+                {{if .Headings}}
+                <ul>
+                    {{if index .Headings "h1"}}<li><strong>H1:</strong> {{index .Headings "h1"}}</li>{{end}}
+                    {{if index .Headings "h2"}}<li><strong>H2:</strong> {{index .Headings "h2"}}</li>{{end}}
+                    {{if index .Headings "h3"}}<li><strong>H3:</strong> {{index .Headings "h3"}}</li>{{end}}
+                    {{if index .Headings "h4"}}<li><strong>H4:</strong> {{index .Headings "h4"}}</li>{{end}}
+                    {{if index .Headings "h5"}}<li><strong>H5:</strong> {{index .Headings "h5"}}</li>{{end}}
+                    {{if index .Headings "h6"}}<li><strong>H6:</strong> {{index .Headings "h6"}}</li>{{end}}
+                </ul>
+                {{else}}
+                <p>No headings found</p>
+                {{end}}
+            </div>
+
+            <div class="result-item">
+                <h3>Links</h3>
+                <ul>
+                    <li><strong>Internal Links:</strong> <span class="badge success">{{.InternalLinks}}</span></li>
+                    <li><strong>External Links:</strong> <span class="badge">{{.ExternalLinks}}</span></li>
+                    <li><strong>Inaccessible Links:</strong> <span class="badge {{if gt .InaccessibleLinks 0}}warning{{else}}success{{end}}">{{.InaccessibleLinks}}</span></li>
+                </ul>
+            </div>
+
+            <div class="result-item">
+                <h3>Login Form</h3>
+                <p>
+                    {{if .HasLoginForm}}
+                    <span class="badge success">Yes</span> - A login form was detected on this page
+                    {{else}}
+                    <span class="badge">No</span> - No login form detected
+                    {{end}}
+                </p>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</body>
+</html>

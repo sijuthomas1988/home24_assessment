@@ -1,0 +1,15 @@
+# standard git ignore
+# vscode and idea dirs
+.vscode
+.idea
+
+# binaries
+bin
+
+# Unneeded files and dirs
+.DS_Store
+coverage.txt
+coverage.out
+cov.html
+coverage.tmp.out
+
