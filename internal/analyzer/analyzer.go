@@ -3,13 +3,62 @@ package analyzer
 import (
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
 )
+
+const (
+	maxResponseBodySize = 10 * 1024 * 1024
+	requestTimeout      = 30 * time.Second
+	linkCheckTimeout    = 5 * time.Second
+	maxIdleConns        = 100
+	maxIdleConnsPerHost = 10
+	idleConnTimeout     = 90 * time.Second
+	dialTimeout         = 10 * time.Second
+	tlsHandshakeTimeout = 10 * time.Second
+)
+
+var (
+	fetchClient *http.Client
+	checkClient *http.Client
+)
+
+func init() {
+	transport := &http.Transport{
+		MaxIdleConns:        maxIdleConns,
+		MaxIdleConnsPerHost: maxIdleConnsPerHost,
+		IdleConnTimeout:     idleConnTimeout,
+		DialContext: (&net.Dialer{
+			Timeout:   dialTimeout,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   tlsHandshakeTimeout,
+		ExpectContinueTimeout: 1 * time.Second,
+		DisableCompression:    false,
+	}
+
+	fetchClient = &http.Client{
+		Timeout:   requestTimeout,
+		Transport: transport,
+	}
+
+	checkClient = &http.Client{
+		Timeout:   linkCheckTimeout,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	log.Printf("[INFO] Analyzer HTTP clients initialized (MaxIdle: %d, Timeout: %s)", maxIdleConns, requestTimeout)
+}
 
 type AnalysisResult struct {
 	URL               string
@@ -24,34 +73,49 @@ type AnalysisResult struct {
 }
 
 func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
+	log.Printf("[INFO] Starting analysis for URL: %s", targetURL)
+	startTime := time.Now()
+
 	result := &AnalysisResult{
 		URL:      targetURL,
 		Headings: make(map[string]int),
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	resp, err := client.Get(targetURL)
+	resp, err := fetchClient.Get(targetURL)
 	if err != nil {
+		log.Printf("[ERROR] Failed to fetch URL %s: %v", targetURL, err)
 		return nil, fmt.Errorf("Failed to fetch URL: %v", err)
 	}
 	defer resp.Body.Close()
 
+	log.Printf("[INFO] Fetched URL %s with status: %d", targetURL, resp.StatusCode)
+
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[ERROR] Non-OK status for URL %s: HTTP %d", targetURL, resp.StatusCode)
 		return nil, fmt.Errorf("HTTP %d: Unable to access the URL. Please check if the URL is correct and accessible", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	limitedReader := io.LimitReader(resp.Body, maxResponseBodySize)
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
+		log.Printf("[ERROR] Failed to read response body from %s: %v", targetURL, err)
 		return nil, fmt.Errorf("Failed to read response body: %v", err)
+	}
+
+	log.Printf("[INFO] Read %d bytes from %s", len(body), targetURL)
+
+	if len(body) >= maxResponseBodySize {
+		log.Printf("[ERROR] Response body too large for %s: %d bytes (max: %d)", targetURL, len(body), maxResponseBodySize)
+		return nil, fmt.Errorf("response body too large (max %d bytes)", maxResponseBodySize)
 	}
 
 	doc, err := html.Parse(strings.NewReader(string(body)))
 	if err != nil {
+		log.Printf("[ERROR] Failed to parse HTML for %s: %v", targetURL, err)
 		return nil, fmt.Errorf("Failed to parse HTML: %v", err)
 	}
+
+	log.Printf("[INFO] Successfully parsed HTML document for %s", targetURL)
 
 	result.HTMLVersion = detectHTMLVersion(string(body))
 
@@ -85,14 +149,31 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	}
 	f(doc)
 
+	log.Printf("[INFO] Extracted %d links from %s", len(links), targetURL)
+
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
+		log.Printf("[ERROR] Failed to parse target URL %s: %v", targetURL, err)
 		return nil, fmt.Errorf("Failed to parse target URL: %v", err)
 	}
 
+	log.Printf("[INFO] Starting link categorization for %d links from %s", len(links), targetURL)
 	result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks = categorizeLinks(links, parsedURL)
 
+	duration := time.Since(startTime)
+	log.Printf("[INFO] Analysis completed for %s in %v - Title: '%s', Headings: %d, Internal: %d, External: %d, Inaccessible: %d, LoginForm: %v",
+		targetURL, duration, result.Title, getTotalHeadings(result.Headings),
+		result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks, result.HasLoginForm)
+
 	return result, nil
+}
+
+func getTotalHeadings(headings map[string]int) int {
+	total := 0
+	for _, count := range headings {
+		total += count
+	}
+	return total
 }
 
 func detectHTMLVersion(htmlContent string) string {
@@ -172,15 +253,18 @@ func isLoginForm(n *html.Node) bool {
 	return hasPasswordField && hasUsernameField
 }
 
-func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inaccessible int) {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+type linkResult struct {
+	isInternal    bool
+	isInaccessible bool
+}
 
-	checkedURLs := make(map[string]bool)
+func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inaccessible int) {
+	const maxWorkers = 10
+
+	log.Printf("[INFO] Categorizing %d raw links", len(links))
+
+	uniqueLinks := make(map[string]bool)
+	var validLinks []string
 
 	for _, link := range links {
 		link = strings.TrimSpace(link)
@@ -192,34 +276,93 @@ func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inac
 
 		parsedLink, err := url.Parse(link)
 		if err != nil {
+			log.Printf("[WARN] Failed to parse link '%s': %v", link, err)
 			continue
 		}
 
 		absoluteURL := baseURL.ResolveReference(parsedLink)
-
-		if absoluteURL.Host == baseURL.Host {
-			internal++
-		} else {
-			external++
-		}
-
 		urlStr := absoluteURL.String()
-		if _, checked := checkedURLs[urlStr]; checked {
-			continue
-		}
-		checkedURLs[urlStr] = true
 
-		resp, err := client.Head(urlStr)
-		if err != nil {
-			inaccessible++
-			continue
-		}
-		resp.Body.Close()
+		if !uniqueLinks[urlStr] {
+			uniqueLinks[urlStr] = true
+			validLinks = append(validLinks, urlStr)
 
-		if resp.StatusCode >= 400 {
+			if absoluteURL.Host == baseURL.Host {
+				internal++
+			} else {
+				external++
+			}
+		}
+	}
+
+	log.Printf("[INFO] Found %d unique valid links (%d internal, %d external)", len(validLinks), internal, external)
+
+	if len(validLinks) == 0 {
+		return
+	}
+
+	jobs := make(chan string, len(validLinks))
+	results := make(chan linkResult, len(validLinks))
+
+	var wg sync.WaitGroup
+	workerCount := maxWorkers
+	if len(validLinks) < maxWorkers {
+		workerCount = len(validLinks)
+	}
+
+	log.Printf("[INFO] Starting %d concurrent workers to validate links", workerCount)
+	checkStartTime := time.Now()
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			checked := 0
+			for urlStr := range jobs {
+				parsedURL, _ := url.Parse(urlStr)
+				isInternal := parsedURL.Host == baseURL.Host
+
+				resp, err := checkClient.Head(urlStr)
+				isInaccessible := false
+				if err != nil {
+					log.Printf("[DEBUG] Worker %d: Link check failed for %s: %v", workerID, urlStr, err)
+					isInaccessible = true
+				} else {
+					resp.Body.Close()
+					if resp.StatusCode >= 400 {
+						log.Printf("[DEBUG] Worker %d: Link inaccessible %s (status: %d)", workerID, urlStr, resp.StatusCode)
+						isInaccessible = true
+					}
+				}
+
+				results <- linkResult{
+					isInternal:     isInternal,
+					isInaccessible: isInaccessible,
+				}
+				checked++
+			}
+			log.Printf("[DEBUG] Worker %d completed checking %d links", workerID, checked)
+		}(i)
+	}
+
+	for _, link := range validLinks {
+		jobs <- link
+	}
+	close(jobs)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for result := range results {
+		if result.isInaccessible {
 			inaccessible++
 		}
 	}
+
+	checkDuration := time.Since(checkStartTime)
+	log.Printf("[INFO] Link validation completed in %v: %d inaccessible out of %d total links", checkDuration, inaccessible, len(validLinks))
 
 	return
 }
