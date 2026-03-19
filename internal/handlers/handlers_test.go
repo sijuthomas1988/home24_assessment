@@ -99,7 +99,7 @@ func TestHomeHandler_POST_InvalidURL(t *testing.T) {
 	}
 
 	body := w.Body.String()
-	if !strings.Contains(body, "Error") && !strings.Contains(body, "Failed") {
+	if !strings.Contains(body, "error") && !strings.Contains(body, "failed") {
 		t.Error("Expected error message in response body")
 	}
 }
