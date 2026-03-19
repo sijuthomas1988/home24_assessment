@@ -58,7 +58,7 @@ jobs:
 
       - name: Build binary
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s -X main.Version=${{ github.sha }} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)' -o webpage-analyzer-linux-amd64 ./cmd/server
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o webpage-analyzer-linux-amd64 ./cmd/server
 
 #  # Docker Build and Push, Should add this to push image to Image Repository
 #  docker:
