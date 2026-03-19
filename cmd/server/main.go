@@ -4,8 +4,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"webpage-analyzer/internal/handlers"
 	"webpage-analyzer/internal/middleware"
+	"webpage-analyzer/internal/observability"
 )
 
 func main() {
@@ -17,15 +19,20 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handlers.HomeHandler)
+	mux.Handle("/metrics", promhttp.Handler())
 
-	handler := rateLimiter.Limit(mux)
+	// Apply middleware chain: Metrics -> RateLimit -> Handlers
+	handler := observability.MetricsMiddleware(rateLimiter.Limit(mux))
 
 	log.Println("[INFO] Server configuration:")
 	log.Println("[INFO]   - Address: :8080")
 	log.Println("[INFO]   - Rate limit: 20 requests/minute, burst: 5")
 	log.Println("[INFO]   - Max response size: 10MB")
 	log.Println("[INFO]   - Concurrent link workers: 10")
-	log.Println("[INFO] Server ready and listening on http://localhost:8080")
+	log.Println("[INFO] Endpoints:")
+	log.Println("[INFO]   - Web Interface: http://localhost:8080")
+	log.Println("[INFO]   - Prometheus Metrics: http://localhost:8080/metrics")
+	log.Println("[INFO] Server ready and listening")
 	log.Println("=====================================")
 
 	if err := http.ListenAndServe(":8080", handler); err != nil {

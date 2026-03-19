@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"golang.org/x/net/html"
+	"webpage-analyzer/internal/observability"
 )
 
 const (
@@ -84,6 +85,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	resp, err := fetchClient.Get(targetURL)
 	if err != nil {
 		log.Printf("[ERROR] Failed to fetch URL %s: %v", targetURL, err)
+		observability.RecordError("fetch_failed", "analyze_url")
 		return nil, fmt.Errorf("Failed to fetch URL: %v", err)
 	}
 	defer resp.Body.Close()
@@ -92,6 +94,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[ERROR] Non-OK status for URL %s: HTTP %d", targetURL, resp.StatusCode)
+		observability.RecordError("http_error", "analyze_url")
 		return nil, fmt.Errorf("HTTP %d: Unable to access the URL. Please check if the URL is correct and accessible", resp.StatusCode)
 	}
 
@@ -99,6 +102,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		log.Printf("[ERROR] Failed to read response body from %s: %v", targetURL, err)
+		observability.RecordError("read_failed", "analyze_url")
 		return nil, fmt.Errorf("Failed to read response body: %v", err)
 	}
 
@@ -106,12 +110,14 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 
 	if len(body) >= maxResponseBodySize {
 		log.Printf("[ERROR] Response body too large for %s: %d bytes (max: %d)", targetURL, len(body), maxResponseBodySize)
+		observability.RecordError("body_too_large", "analyze_url")
 		return nil, fmt.Errorf("response body too large (max %d bytes)", maxResponseBodySize)
 	}
 
 	doc, err := html.Parse(strings.NewReader(string(body)))
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse HTML for %s: %v", targetURL, err)
+		observability.RecordError("parse_failed", "analyze_url")
 		return nil, fmt.Errorf("Failed to parse HTML: %v", err)
 	}
 
@@ -154,6 +160,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse target URL %s: %v", targetURL, err)
+		observability.RecordError("url_parse_failed", "analyze_url")
 		return nil, fmt.Errorf("Failed to parse target URL: %v", err)
 	}
 

@@ -1,0 +1,24 @@
+# Prometheus Configuration for Web Page Analyzer
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # For local development
+  - job_name: 'webpage-analyzer-local'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['localhost:8080']
+        labels:
+          app: 'webpage-analyzer'
+          environment: 'development'
+
+  # For Docker deployment (comment out the above and use this when running with Docker Compose)
+  - job_name: 'webpage-analyzer'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['webpage-analyzer:8080']
+        labels:
+          app: 'webpage-analyzer'
+          environment: 'docker'

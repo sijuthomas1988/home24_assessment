@@ -5,11 +5,18 @@
 
 # binaries
 bin
+webpage-analyzer
 
 # Unneeded files and dirs
 .DS_Store
 coverage.txt
 coverage.out
+coverage.html
 cov.html
 coverage.tmp.out
 
+# Docker
+.env
+
+# Test artifacts
+internal/handlers/testdata

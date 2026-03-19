@@ -152,13 +152,135 @@
         .badge.danger {
             background: #ef4444;
         }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-content h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.25rem;
+        }
+
+        .progress-steps {
+            text-align: left;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .progress-step .step-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+            background: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        .progress-step.active .step-icon {
+            background: #667eea;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .progress-step.completed .step-icon {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
     </style>
 </head>
 <body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Analyzing Page...</h3>
+            <p style="color: #666; margin-bottom: 10px;">This may take a few moments</p>
+            <div class="progress-steps">
+                <div class="progress-step active" id="step1">
+                    <div class="step-icon">1</div>
+                    <span>Fetching page content</span>
+                </div>
+                <div class="progress-step" id="step2">
+                    <div class="step-icon">2</div>
+                    <span>Parsing HTML structure</span>
+                </div>
+                <div class="progress-step" id="step3">
+                    <div class="step-icon">3</div>
+                    <span>Analyzing headings & forms</span>
+                </div>
+                <div class="progress-step" id="step4">
+                    <div class="step-icon">4</div>
+                    <span>Validating links</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <h1>Web Page Analyzer</h1>
 
-        <form method="POST" action="/">
+        <form method="POST" action="/" id="analyzeForm">
             <div class="form-group">
                 <label for="url">Enter URL to analyze:</label>
                 <input
@@ -170,7 +292,7 @@
                     value="{{if .URL}}{{.URL}}{{end}}"
                 >
             </div>
-            <button type="submit">Analyze</button>
+            <button type="submit" id="submitBtn">Analyze</button>
         </form>
 
         {{if .Error}}
@@ -236,5 +358,68 @@
         </div>
         {{end}}
     </div>
+
+    <script>
+        const form = document.getElementById('analyzeForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const submitBtn = document.getElementById('submitBtn');
+
+        const steps = [
+            { id: 'step1', duration: 800 },
+            { id: 'step2', duration: 600 },
+            { id: 'step3', duration: 500 },
+            { id: 'step4', duration: 1000 }
+        ];
+
+        function simulateProgress() {
+            let currentStep = 0;
+
+            function activateNextStep() {
+                if (currentStep > 0) {
+                    const prevStep = document.getElementById(steps[currentStep - 1].id);
+                    prevStep.classList.remove('active');
+                    prevStep.classList.add('completed');
+                }
+
+                if (currentStep < steps.length) {
+                    const step = document.getElementById(steps[currentStep].id);
+                    step.classList.add('active');
+
+                    currentStep++;
+                    setTimeout(activateNextStep, steps[currentStep - 1].duration);
+                }
+            }
+
+            activateNextStep();
+        }
+
+        function resetProgress() {
+            steps.forEach(step => {
+                const element = document.getElementById(step.id);
+                element.classList.remove('active', 'completed');
+            });
+            document.getElementById('step1').classList.add('active');
+        }
+
+        form.addEventListener('submit', function(e) {
+            const urlInput = document.getElementById('url');
+            if (!urlInput.value.trim()) {
+                return;
+            }
+
+            loadingOverlay.classList.add('active');
+            submitBtn.disabled = true;
+            resetProgress();
+            simulateProgress();
+        });
+
+        // Hide loading overlay on page load if there are results or errors
+        window.addEventListener('load', function() {
+            {{if or .Error .URL}}
+                loadingOverlay.classList.remove('active');
+                submitBtn.disabled = false;
+            {{end}}
+        });
+    </script>
 </body>
 </html>

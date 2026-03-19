@@ -4,8 +4,10 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"webpage-analyzer/internal/analyzer"
+	"webpage-analyzer/internal/observability"
 )
 
 var templates = template.Must(template.ParseGlob("templates/*.html"))
@@ -44,9 +46,16 @@ func handleAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] Analysis request received from %s for URL: %s", r.RemoteAddr, url)
 
+	startTime := time.Now()
 	result, err := analyzer.AnalyzeURL(url)
+	duration := time.Since(startTime)
+
 	if err != nil {
 		log.Printf("[ERROR] Analysis failed for URL %s: %v", url, err)
+
+		// Record failed analysis
+		observability.RecordAnalysis(duration, false, 0, 0, 0)
+
 		data := map[string]interface{}{
 			"Error": err.Error(),
 		}
@@ -57,6 +66,9 @@ func handleAnalysis(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	// Record successful analysis with link counts
+	observability.RecordAnalysis(duration, true, result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks)
 
 	log.Printf("[INFO] Analysis successful for URL: %s, rendering results", url)
 	renderErr := templates.ExecuteTemplate(w, "index.html", result)

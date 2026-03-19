@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"golang.org/x/time/rate"
+	"webpage-analyzer/internal/observability"
 )
 
 type visitor struct {
@@ -48,6 +49,10 @@ func (rl *RateLimiter) getVisitor(ip string) *rate.Limiter {
 			lastSeen: time.Now(),
 		}
 		log.Printf("[INFO] New visitor registered: %s (total active: %d)", ip, len(rl.visitors))
+
+		// Update active visitors metric
+		observability.UpdateActiveVisitors(len(rl.visitors))
+
 		return limiter
 	}
 
@@ -72,10 +77,15 @@ func (rl *RateLimiter) cleanupVisitors() {
 				cleaned++
 			}
 		}
+
+		currentCount := len(rl.visitors)
 		rl.mu.Unlock()
 
 		if cleaned > 0 {
-			log.Printf("[INFO] Cleaned up %d inactive visitors (active: %d -> %d)", cleaned, initialCount, initialCount-cleaned)
+			log.Printf("[INFO] Cleaned up %d inactive visitors (active: %d -> %d)", cleaned, initialCount, currentCount)
+
+			// Update active visitors metric
+			observability.UpdateActiveVisitors(currentCount)
 		}
 	}
 }
@@ -87,6 +97,10 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 		if !limiter.Allow() {
 			log.Printf("[WARN] Rate limit exceeded for IP: %s, Method: %s, Path: %s", ip, r.Method, r.URL.Path)
+
+			// Record rate limit violation
+			observability.RecordRateLimitExceeded(ip)
+
 			http.Error(w, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
 			return
 		}
