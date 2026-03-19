@@ -4,7 +4,7 @@
 
 **A powerful Go web application that analyzes web pages and provides detailed insights about their structure and content**
 
-[![Go Version](https://img.shields.io/badge/Go-1.16+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.25.0+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com)
 [![Test Coverage](https://img.shields.io/badge/Coverage-85%25-success?style=flat)](README.md#testing)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=flat&logo=githubactions)](https://github.com)
@@ -58,9 +58,37 @@ The analyzer provides the following information about any given URL:
 - ❌ **Error Tracking**: Comprehensive error metrics by type and operation
 - 📝 **Structured Logging**: Multi-level logging (INFO, WARN, ERROR, DEBUG)
 
+## 🎯 Design Philosophy & Key Decisions
+
+This project demonstrates production-grade engineering with explicit trade-off analysis:
+
+**Architecture Decisions**:
+- ✅ **Monolith over Microservices**: Simpler operations, faster iteration (split when >20 engineers or different scaling needs)
+- ✅ **Synchronous over Async**: Better UX for current scale (migrate to queue at >5K req/min)
+- ✅ **In-Memory Rate Limiting**: Sub-microsecond latency vs. Redis at 1-2ms (switch at >10 instances)
+- ✅ **Worker Pool (10) over Unbounded Goroutines**: Predictable resources vs. OOM risk on large pages
+- ✅ **Templates over SPA**: Faster initial load, better SEO, progressive enhancement
+
+**Why These Matter**:
+- Each decision optimized for **current scale** while providing **clear migration paths**
+- Trade-offs explicitly documented in [ARCHITECTURE.md](ARCHITECTURE.md#key-design-trade-offs--alternatives-considered)
+- Code comments explain **WHY**, not just WHAT
+
+**Scaling Thresholds** (when to evolve architecture):
+| Current Approach | Threshold | Next Step |
+|------------------|-----------|-----------|
+| Synchronous processing | >5,000 req/min | Async queue (RabbitMQ/SQS) |
+| In-memory rate limiting | >10 instances | Redis for shared state |
+| Fixed worker pool | Background jobs needed | Dynamic pool + job queue |
+| No caching | >30% repeat URLs | Redis cache (1hr TTL) |
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed analysis of alternatives considered and migration paths.
+
+---
+
 ## 📋 Prerequisites
 
-- Go 1.16 or higher
+- Go 1.25.0 or higher
 
 ## 📦 Installation
 

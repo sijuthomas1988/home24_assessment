@@ -18,10 +18,13 @@ type visitor struct {
 	lastSeen time.Time
 }
 
-// RateLimiter implements per-IP rate limiting for HTTP requests
+// RateLimiter implements per-IP rate limiting for HTTP requests.
+// Uses in-memory storage rather than Redis for simplicity at current scale.
+// Trade-off: Limits are per-instance, not global across multiple instances.
+// Migration path: Switch to Redis when running >10 instances or need strict global limits.
 type RateLimiter struct {
 	visitors map[string]*visitor
-	mu       sync.RWMutex
+	mu       sync.RWMutex // RWMutex chosen over Mutex: read-heavy workload (getVisitor) benefits from concurrent reads
 	rate     rate.Limit
 	burst    int
 }
@@ -65,6 +68,9 @@ func (rl *RateLimiter) getVisitor(ip string) *rate.Limiter {
 }
 
 func (rl *RateLimiter) cleanupVisitors() {
+	// Background cleanup prevents memory leaks from accumulating visitor records.
+	// Alternative considered: TTL-based cleanup on access (rejected due to lock contention on hot path).
+	// Current approach: Periodic cleanup trades slightly higher memory usage for zero hot-path overhead.
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
@@ -76,6 +82,10 @@ func (rl *RateLimiter) cleanupVisitors() {
 		cleaned := 0
 
 		for ip, v := range rl.visitors {
+			// 10-minute threshold chosen based on:
+			// - Typical user session: 5-15 minutes
+			// - Balance: aggressive cleanup (5min) vs. memory safety (15min)
+			// - Memory impact: ~200 bytes per visitor × 1000 visitors = ~200KB (negligible)
 			if time.Since(v.lastSeen) > 10*time.Minute {
 				delete(rl.visitors, ip)
 				cleaned++
