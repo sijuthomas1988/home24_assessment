@@ -395,8 +395,92 @@ rate(analysis_total{status="success"}[5m]) / rate(analysis_total[5m])
 
 ### 📋 Workflow Files
 
-- **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI pipeline
+- **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI/CD pipeline with automated releases
 
+---
+
+## 📦 Versioning & Releases
+
+### Version Scheme
+
+The project uses **calendar-based versioning** with the format:
+
+```
+VYY.WeekNumber.Counter
+```
+
+**Components:**
+- **VYY**: Last 2 digits of the year (e.g., `V26` for 2026)
+- **WeekNumber**: ISO week number of the year (01-53)
+- **Counter**: Build number for that specific week (resets each week)
+
+**Examples:**
+- `V26.12.1` - First build of week 12 in 2026
+- `V26.12.2` - Second build of week 12 in 2026
+- `V26.13.1` - First build of week 13 in 2026
+
+### Benefits of This Scheme
+
+✅ **Time-based**: Easy to determine when a release was made
+✅ **Sequential**: Clear ordering within each week
+✅ **Automatic**: No manual version bumping required
+✅ **Weekly resets**: Counter resets each week, keeping numbers small
+
+### Automated Releases
+
+Every push to `main` that passes CI automatically:
+1. ✅ Runs linting and tests
+2. ✅ Builds the binary
+3. ✅ Generates a version tag (e.g., `V26.12.1`)
+4. ✅ **Generates changelog** from commits
+5. ✅ Creates a GitHub Release with changelog
+6. ✅ Uploads the compiled binary
+
+### Changelog Generation
+
+Changelogs are **automatically generated** from commit messages, categorized as:
+
+- **Features & Enhancements**: Commits starting with `feat:`, `add:`, `enhance:`
+- **Bug Fixes**: Commits starting with `fix:`, `bug:`
+- **Documentation**: Commits starting with `doc:`, `docs:`
+- **Other Changes**: All other commits
+
+**Commit Message Examples:**
+```bash
+git commit -m "feat: add concurrent link validation"
+git commit -m "fix: resolve memory leak in rate limiter"
+git commit -m "docs: update installation instructions"
+git commit -m "refactor: optimize HTML parsing"
+```
+
+**Changelog Output Example:**
+```markdown
+## 📝 Changelog
+
+### Features & Enhancements
+- feat: add concurrent link validation (a1b2c3d)
+- enhance: improve error messages (e4f5g6h)
+
+### Bug Fixes
+- fix: resolve memory leak in rate limiter (i7j8k9l)
+
+### Documentation
+- docs: update installation instructions (m0n1o2p)
+
+---
+Full Changelog: V26.11.5...V26.12.1
+```
+
+**Download latest release:**
+```bash
+# Visit the releases page
+https://github.com/yourusername/home24_assessment/releases
+
+# Or use GitHub CLI
+gh release download --pattern 'webpage-analyzer-linux-amd64'
+```
+
+---
 
 ## 📐 Architecture
 
