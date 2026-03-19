@@ -1,37 +1,140 @@
-# More info on config here: https://github.com/golangci/golangci-lint#config-file
+# golangci-lint configuration for Web Page Analyzer
+# More info: https://golangci-lint.run/usage/configuration/
+
 run:
-  deadline: 2m
+  timeout: 5m
   issues-exit-code: 1
-  tests: false
+  tests: true
+  skip-dirs:
+    - vendor
+  skip-files:
+    - ".*\\.pb\\.go$"
 
 output:
-  print-issued-lines: true
-  print-linter-name: true
   formats:
     - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
 
 linters-settings:
   govet:
-    shadow: true
     enable-all: true
-  golint:
-    min-confidence: 0
+    disable:
+      - shadow  # Too many false positives
+
+  gocyclo:
+    min-complexity: 15
+
   dupl:
-    threshold: 250
+    threshold: 100
+
   goconst:
-    min-len:         2
-    min-occurrences: 2
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  lll:
+    line-length: 140
+
+  goimports:
+    local-prefixes: webpage-analyzer
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - whyNoLint  # We explain in code when needed
+
+  funlen:
+    lines: 100
+    statements: 50
+
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+      - name: unexported-return
+        severity: warning
+      - name: time-naming
+        severity: warning
+      - name: var-naming
+        severity: warning
+      - name: error-return
+        severity: warning
+      - name: error-strings
+        severity: warning
+      - name: error-naming
+        severity: warning
+      - name: indent-error-flow
+        severity: warning
 
 linters:
-  disable-all: true
   enable:
-    - revive
-    - govet
-    - errcheck
-    - ineffassign
-    - typecheck
-    - dupl
-    - goconst
-    - goimports
-    - staticcheck
-    - unused
+    # Bugs/Correctness
+    - bodyclose      # Checks HTTP response body is closed
+    - errcheck       # Checks unchecked errors
+    - govet          # Reports suspicious constructs
+    - staticcheck    # Advanced Go linter
+    - typecheck      # Type-checks Go code
+    - unused         # Checks for unused code
+
+    # Style
+    - gofmt          # Checks code formatting
+    - goimports      # Checks import formatting
+    - revive         # Golint replacement
+    - stylecheck     # Style guide enforcement
+
+    # Performance
+    - gocritic       # Comprehensive Go linter
+    - ineffassign    # Detects ineffectual assignments
+    - unconvert      # Removes unnecessary type conversions
+    - unparam        # Reports unused function parameters
+
+    # Complexity
+    - funlen         # Detects long functions
+    - gocyclo        # Computes cyclomatic complexity
+
+    # Code Quality
+    - dupl           # Detects code cloning
+    - goconst        # Finds repeated strings that could be constants
+    - misspell       # Finds commonly misspelled words
+    - nakedret       # Checks naked returns in long functions
+
+    # Security
+    - gosec          # Security problems
+
+    # Misc
+    - exportloopref  # Checks for pointers to loop variables
+    - goprintffuncname # Checks printf-like functions
+    - lll            # Reports long lines
+    - whitespace     # Detection of unnecessary whitespace
+
+issues:
+  # Exclude common false positives
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - goconst
+
+    # Exclude known issues in legacy code (if any)
+    # - path: internal/legacy/
+    #   linters:
+    #     - all
+
+  # Show all issues
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

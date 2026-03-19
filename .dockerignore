@@ -25,6 +25,13 @@ internal/handlers/testdata
 README.md
 *.md
 
+# Monitoring files
+prometheus.yml
+grafana-dashboard.json
+docker-compose.observability.yml
+prometheus-data/
+grafana-data/
+
 # CI/CD
 .github
 

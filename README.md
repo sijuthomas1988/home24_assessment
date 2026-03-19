@@ -7,7 +7,10 @@
 [![Go Version](https://img.shields.io/badge/Go-1.16+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://www.docker.com)
 [![Test Coverage](https://img.shields.io/badge/Coverage-85%25-success?style=flat)](README.md#testing)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=flat&logo=githubactions)](https://github.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
+
+📖 **[Architecture Documentation](ARCHITECTURE.md)** | 🚀 **[CI/CD Pipeline](.github/workflows/)**
 
 </div>
 
@@ -363,3 +366,134 @@ rate(analysis_total{status="success"}[5m]) / rate(analysis_total[5m])
 - 🌐 Web Analyzer: http://localhost:8080
 - 📊 Prometheus: http://localhost:9090
 - 📈 Grafana: http://localhost:3000 (admin/admin)
+
+## 🔄 CI/CD Pipeline
+
+The project includes a comprehensive CI/CD pipeline using GitHub Actions for automated testing, building, and deployment.
+
+### 🎯 Continuous Integration
+
+**Automated on every push and pull request:**
+
+1. **🔍 Linting & Formatting**
+   - golangci-lint with comprehensive checks
+   - gofmt validation
+   - Code style enforcement
+
+2. **🔒 Security Scanning**
+   - Gosec static security analyzer
+   - SARIF reports uploaded to GitHub Security
+   - Trivy container vulnerability scanning
+
+3. **🧪 Multi-Version Testing**
+   - Tests run on Go 1.21, 1.22, and 1.23
+   - Race condition detection
+   - Code coverage reporting (Codecov integration)
+
+4. **🏗️ Multi-Platform Builds**
+   - Linux (amd64, arm64)
+   - macOS (amd64, arm64)
+   - Windows (amd64)
+
+5. **🐳 Docker Build & Push**
+   - Multi-arch images (amd64, arm64)
+   - Build cache optimization
+   - Automated tagging (branch, PR, SHA)
+
+6. **✅ Integration Tests**
+   - Docker Compose stack validation
+   - Health check verification
+   - End-to-end analysis tests
+
+### 🚀 Continuous Deployment
+
+**Automated on version tags (v*.*.*):**
+
+- Multi-platform binary releases
+- Docker image publishing with version tags
+- Automated changelog generation
+- GitHub Release creation with artifacts
+- Checksum generation for binaries
+
+### 📋 Workflow Files
+
+- **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI pipeline
+- **[.github/workflows/release.yml](.github/workflows/release.yml)** - Release automation
+
+### 🎨 Pipeline Visualization
+
+```
+┌─────────────┐
+│  Git Push   │
+└──────┬──────┘
+       │
+       ├─────▶ Lint ────────────────┐
+       ├─────▶ Security Scan ───────┤
+       ├─────▶ Test (Go 1.21) ──────┤
+       ├─────▶ Test (Go 1.22) ──────┼──▶ All Checks Pass
+       ├─────▶ Test (Go 1.23) ──────┤
+       ├─────▶ Build Binaries ──────┤
+       ├─────▶ Docker Build ─────────┤
+       └─────▶ Integration Tests ────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │  Merge/Deploy│
+              └──────────────┘
+```
+
+## 📐 Architecture
+
+For detailed architecture documentation, design decisions, and scalability considerations, see:
+
+**📖 [ARCHITECTURE.md](ARCHITECTURE.md)**
+
+### Key Architectural Highlights
+
+**🏗️ Layered Architecture**:
+```
+Middleware Layer → Handler Layer → Business Logic → External Services
+```
+
+**⚡ Performance Optimizations**:
+- Connection pooling with 100 max idle connections
+- Worker pool pattern for concurrent link validation
+- Streaming HTML parser for memory efficiency
+- Token bucket rate limiting
+
+**🔒 Security Design**:
+- SSRF protection with URL validation
+- Resource limits (timeouts, size caps)
+- Per-IP rate limiting
+- Non-root Docker containers
+
+**📊 Observability**:
+- Prometheus metrics at every layer
+- Structured logging with multiple levels
+- Request tracing and error tracking
+
+**📈 Scalability**:
+- Stateless design for horizontal scaling
+- Bounded resource usage
+- Clear bottleneck identification
+- Future-ready architecture
+
+## 🤝 Contributing
+
+Contributions are welcome! Please ensure:
+
+1. ✅ All tests pass (`make test`)
+2. ✅ Code is formatted (`gofmt -s -w .`)
+3. ✅ Linter passes (`golangci-lint run`)
+4. ✅ Coverage doesn't decrease
+5. ✅ CI pipeline passes
+
+## 📄 License
+
+MIT License - See LICENSE file for details
+
+## 🙏 Acknowledgments
+
+- Go standard library team for excellent HTTP and HTML packages
+- Prometheus team for robust metrics framework
+- GitHub Actions for CI/CD platform
