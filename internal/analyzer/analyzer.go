@@ -1,3 +1,4 @@
+// Package analyzer provides webpage analysis functionality
 package analyzer
 
 import (
@@ -11,8 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/html"
 	"webpage-analyzer/internal/observability"
+
+	"golang.org/x/net/html"
 )
 
 const (
@@ -61,18 +63,20 @@ func init() {
 	log.Printf("[INFO] Analyzer HTTP clients initialized (MaxIdle: %d, Timeout: %s)", maxIdleConns, requestTimeout)
 }
 
+// AnalysisResult contains the results of analyzing a webpage
 type AnalysisResult struct {
+	Headings          map[string]int
 	URL               string
 	HTMLVersion       string
 	Title             string
-	Headings          map[string]int
+	Error             string
 	InternalLinks     int
 	ExternalLinks     int
 	InaccessibleLinks int
 	HasLoginForm      bool
-	Error             string
 }
 
+// AnalyzeURL fetches and analyzes a webpage, returning detailed information about its structure and links
 func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	log.Printf("[INFO] Starting analysis for URL: %s", targetURL)
 	startTime := time.Now()
@@ -86,9 +90,13 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	if err != nil {
 		log.Printf("[ERROR] Failed to fetch URL %s: %v", targetURL, err)
 		observability.RecordError("fetch_failed", "analyze_url")
-		return nil, fmt.Errorf("Failed to fetch URL: %v", err)
+		return nil, fmt.Errorf("failed to fetch URL: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("[WARN] Failed to close response body: %v", err)
+		}
+	}()
 
 	log.Printf("[INFO] Fetched URL %s with status: %d", targetURL, resp.StatusCode)
 
@@ -103,7 +111,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	if err != nil {
 		log.Printf("[ERROR] Failed to read response body from %s: %v", targetURL, err)
 		observability.RecordError("read_failed", "analyze_url")
-		return nil, fmt.Errorf("Failed to read response body: %v", err)
+		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
 	log.Printf("[INFO] Read %d bytes from %s", len(body), targetURL)
@@ -118,7 +126,7 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse HTML for %s: %v", targetURL, err)
 		observability.RecordError("parse_failed", "analyze_url")
-		return nil, fmt.Errorf("Failed to parse HTML: %v", err)
+		return nil, fmt.Errorf("failed to parse HTML: %v", err)
 	}
 
 	log.Printf("[INFO] Successfully parsed HTML document for %s", targetURL)
@@ -161,16 +169,18 @@ func AnalyzeURL(targetURL string) (*AnalysisResult, error) {
 	if err != nil {
 		log.Printf("[ERROR] Failed to parse target URL %s: %v", targetURL, err)
 		observability.RecordError("url_parse_failed", "analyze_url")
-		return nil, fmt.Errorf("Failed to parse target URL: %v", err)
+		return nil, fmt.Errorf("failed to parse target URL: %v", err)
 	}
 
 	log.Printf("[INFO] Starting link categorization for %d links from %s", len(links), targetURL)
 	result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks = categorizeLinks(links, parsedURL)
 
 	duration := time.Since(startTime)
-	log.Printf("[INFO] Analysis completed for %s in %v - Title: '%s', Headings: %d, Internal: %d, External: %d, Inaccessible: %d, LoginForm: %v",
+	log.Printf(
+		"[INFO] Analysis completed for %s in %v - Title: '%s', Headings: %d, Internal: %d, External: %d, Inaccessible: %d, LoginForm: %v",
 		targetURL, duration, result.Title, getTotalHeadings(result.Headings),
-		result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks, result.HasLoginForm)
+		result.InternalLinks, result.ExternalLinks, result.InaccessibleLinks, result.HasLoginForm,
+	)
 
 	return result, nil
 }
@@ -191,25 +201,29 @@ func detectHTMLVersion(htmlContent string) string {
 	}
 
 	if strings.Contains(htmlContent, "html 4.01") {
-		if strings.Contains(htmlContent, "strict") {
+		switch {
+		case strings.Contains(htmlContent, "strict"):
 			return "HTML 4.01 Strict"
-		} else if strings.Contains(htmlContent, "transitional") {
+		case strings.Contains(htmlContent, "transitional"):
 			return "HTML 4.01 Transitional"
-		} else if strings.Contains(htmlContent, "frameset") {
+		case strings.Contains(htmlContent, "frameset"):
 			return "HTML 4.01 Frameset"
+		default:
+			return "HTML 4.01"
 		}
-		return "HTML 4.01"
 	}
 
 	if strings.Contains(htmlContent, "xhtml 1.0") {
-		if strings.Contains(htmlContent, "strict") {
+		switch {
+		case strings.Contains(htmlContent, "strict"):
 			return "XHTML 1.0 Strict"
-		} else if strings.Contains(htmlContent, "transitional") {
+		case strings.Contains(htmlContent, "transitional"):
 			return "XHTML 1.0 Transitional"
-		} else if strings.Contains(htmlContent, "frameset") {
+		case strings.Contains(htmlContent, "frameset"):
 			return "XHTML 1.0 Frameset"
+		default:
+			return "XHTML 1.0"
 		}
-		return "XHTML 1.0"
 	}
 
 	if strings.Contains(htmlContent, "xhtml 1.1") {
@@ -261,7 +275,7 @@ func isLoginForm(n *html.Node) bool {
 }
 
 type linkResult struct {
-	isInternal    bool
+	isInternal     bool
 	isInaccessible bool
 }
 
@@ -305,7 +319,7 @@ func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inac
 	log.Printf("[INFO] Found %d unique valid links (%d internal, %d external)", len(validLinks), internal, external)
 
 	if len(validLinks) == 0 {
-		return
+		return internal, external, inaccessible
 	}
 
 	jobs := make(chan string, len(validLinks))
@@ -335,7 +349,9 @@ func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inac
 					log.Printf("[DEBUG] Worker %d: Link check failed for %s: %v", workerID, urlStr, err)
 					isInaccessible = true
 				} else {
-					resp.Body.Close()
+					if closeErr := resp.Body.Close(); closeErr != nil {
+						log.Printf("[WARN] Worker %d: Failed to close response body: %v", workerID, closeErr)
+					}
 					if resp.StatusCode >= 400 {
 						log.Printf("[DEBUG] Worker %d: Link inaccessible %s (status: %d)", workerID, urlStr, resp.StatusCode)
 						isInaccessible = true
@@ -371,5 +387,5 @@ func categorizeLinks(links []string, baseURL *url.URL) (internal, external, inac
 	checkDuration := time.Since(checkStartTime)
 	log.Printf("[INFO] Link validation completed in %v: %d inaccessible out of %d total links", checkDuration, inaccessible, len(validLinks))
 
-	return
+	return internal, external, inaccessible
 }

@@ -280,40 +280,40 @@ func TestCategorizeLinks(t *testing.T) {
 	baseURL, _ := url.Parse("https://example.com")
 
 	tests := []struct {
-		name              string
-		links             []string
-		expectedInternal  int
-		expectedExternal  int
+		name             string
+		links            []string
+		expectedInternal int
+		expectedExternal int
 	}{
 		{
-			name:              "Internal and external links",
-			links:             []string{"https://example.com/page1", "https://other.com/page"},
-			expectedInternal:  1,
-			expectedExternal:  1,
+			name:             "Internal and external links",
+			links:            []string{"https://example.com/page1", "https://other.com/page"},
+			expectedInternal: 1,
+			expectedExternal: 1,
 		},
 		{
-			name:              "Relative links",
-			links:             []string{"/page1", "/page2", "https://other.com"},
-			expectedInternal:  2,
-			expectedExternal:  1,
+			name:             "Relative links",
+			links:            []string{"/page1", "/page2", "https://other.com"},
+			expectedInternal: 2,
+			expectedExternal: 1,
 		},
 		{
-			name:              "Duplicate links",
-			links:             []string{"/page1", "/page1", "/page1"},
-			expectedInternal:  1,
-			expectedExternal:  0,
+			name:             "Duplicate links",
+			links:            []string{"/page1", "/page1", "/page1"},
+			expectedInternal: 1,
+			expectedExternal: 0,
 		},
 		{
-			name:              "Ignored links",
-			links:             []string{"#anchor", "javascript:void(0)", "mailto:test@test.com"},
-			expectedInternal:  0,
-			expectedExternal:  0,
+			name:             "Ignored links",
+			links:            []string{"#anchor", "javascript:void(0)", "mailto:test@test.com"},
+			expectedInternal: 0,
+			expectedExternal: 0,
 		},
 		{
-			name:              "Empty links",
-			links:             []string{"", "  ", "\t"},
-			expectedInternal:  0,
-			expectedExternal:  0,
+			name:             "Empty links",
+			links:            []string{"", "  ", "\t"},
+			expectedInternal: 0,
+			expectedExternal: 0,
 		},
 	}
 

@@ -1,3 +1,4 @@
+// Package middleware provides HTTP middleware components for the webpage analyzer service
 package middleware
 
 import (
@@ -7,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/time/rate"
 	"webpage-analyzer/internal/observability"
+
+	"golang.org/x/time/rate"
 )
 
 type visitor struct {
@@ -16,6 +18,7 @@ type visitor struct {
 	lastSeen time.Time
 }
 
+// RateLimiter implements per-IP rate limiting for HTTP requests
 type RateLimiter struct {
 	visitors map[string]*visitor
 	mu       sync.RWMutex
@@ -23,7 +26,8 @@ type RateLimiter struct {
 	burst    int
 }
 
-func NewRateLimiter(requestsPerMinute int, burst int) *RateLimiter {
+// NewRateLimiter creates a new rate limiter with the specified requests per minute and burst capacity
+func NewRateLimiter(requestsPerMinute, burst int) *RateLimiter {
 	rl := &RateLimiter{
 		visitors: make(map[string]*visitor),
 		rate:     rate.Limit(requestsPerMinute) / 60,
@@ -90,6 +94,7 @@ func (rl *RateLimiter) cleanupVisitors() {
 	}
 }
 
+// Limit is an HTTP middleware that enforces rate limiting based on client IP address
 func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := getIP(r)
@@ -144,14 +149,14 @@ func parseForwardedFor(header string) []string {
 		}
 
 		ip := header[i:end]
-		for len(ip) > 0 && ip[0] == ' ' {
+		for ip != "" && ip[0] == ' ' {
 			ip = ip[1:]
 		}
-		for len(ip) > 0 && ip[len(ip)-1] == ' ' {
+		for ip != "" && ip[len(ip)-1] == ' ' {
 			ip = ip[:len(ip)-1]
 		}
 
-		if len(ip) > 0 {
+		if ip != "" {
 			ips = append(ips, ip)
 		}
 

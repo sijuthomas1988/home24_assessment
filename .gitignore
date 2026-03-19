@@ -6,6 +6,7 @@
 # binaries
 bin
 webpage-analyzer
+server
 
 # Unneeded files and dirs
 .DS_Store

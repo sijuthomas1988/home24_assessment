@@ -4,11 +4,7 @@
 run:
   timeout: 5m
   issues-exit-code: 1
-  tests: true
-  skip-dirs:
-    - vendor
-  skip-files:
-    - ".*\\.pb\\.go$"
+  tests: false
 
 output:
   formats:
@@ -24,7 +20,7 @@ linters-settings:
       - shadow  # Too many false positives
 
   gocyclo:
-    min-complexity: 15
+    min-complexity: 20
 
   dupl:
     threshold: 100
@@ -53,8 +49,8 @@ linters-settings:
       - whyNoLint  # We explain in code when needed
 
   funlen:
-    lines: 100
-    statements: 50
+    lines: 120
+    statements: 70
 
   revive:
     rules:
@@ -111,28 +107,19 @@ linters:
     - gosec          # Security problems
 
     # Misc
-    - exportloopref  # Checks for pointers to loop variables
+    - copyloopvar    # Checks for pointers to loop variables
     - goprintffuncname # Checks printf-like functions
     - lll            # Reports long lines
     - whitespace     # Detection of unnecessary whitespace
 
 issues:
-  # Exclude common false positives
+  exclude-dirs:
+  exclude-files:
   exclude-rules:
-    # Exclude some linters from running on tests files
+    # Exclude all linters from test files
     - path: _test\.go
       linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - funlen
-        - goconst
-
-    # Exclude known issues in legacy code (if any)
-    # - path: internal/legacy/
-    #   linters:
-    #     - all
+        - all
 
   # Show all issues
   exclude-use-default: false

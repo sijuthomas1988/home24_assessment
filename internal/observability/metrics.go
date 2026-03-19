@@ -1,3 +1,4 @@
+// Package observability provides metrics and monitoring capabilities using Prometheus
 package observability
 
 import (
@@ -10,8 +11,8 @@ import (
 )
 
 var (
-	// HTTP request metrics
-	HttpRequestsTotal = promauto.NewCounterVec(
+	// HTTPRequestsTotal tracks the total number of HTTP requests
+	HTTPRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests",
@@ -19,7 +20,8 @@ var (
 		[]string{"method", "endpoint", "status"},
 	)
 
-	HttpRequestDuration = promauto.NewHistogramVec(
+	// HTTPRequestDuration tracks HTTP request latency in seconds
+	HTTPRequestDuration = promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request latency in seconds",
@@ -28,22 +30,24 @@ var (
 		[]string{"method", "endpoint", "status"},
 	)
 
-	HttpRequestsInFlight = promauto.NewGauge(
+	// HTTPRequestsInFlight tracks the current number of HTTP requests being served
+	HTTPRequestsInFlight = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "http_requests_in_flight",
 			Help: "Current number of HTTP requests being served",
 		},
 	)
 
-	// Analysis metrics
+	// AnalysisTotal tracks the total number of page analyzes
 	AnalysisTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "analysis_total",
-			Help: "Total number of page analyses",
+			Help: "Total number of page analyzes",
 		},
 		[]string{"status"},
 	)
 
+	// AnalysisDuration tracks time taken to analyze a page
 	AnalysisDuration = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "analysis_duration_seconds",
@@ -52,6 +56,7 @@ var (
 		},
 	)
 
+	// LinksValidated tracks the total number of links validated
 	LinksValidated = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "links_validated_total",
@@ -60,7 +65,7 @@ var (
 		[]string{"type", "status"},
 	)
 
-	// Rate limiting metrics
+	// RateLimitExceeded tracks the total number of rate limit violations
 	RateLimitExceeded = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "rate_limit_exceeded_total",
@@ -69,6 +74,7 @@ var (
 		[]string{"ip"},
 	)
 
+	// ActiveVisitors tracks the current number of active visitors
 	ActiveVisitors = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "active_visitors",
@@ -76,7 +82,7 @@ var (
 		},
 	)
 
-	// Error metrics
+	// ErrorsTotal tracks the total number of errors
 	ErrorsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "errors_total",
@@ -91,8 +97,8 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		HttpRequestsInFlight.Inc()
-		defer HttpRequestsInFlight.Dec()
+		HTTPRequestsInFlight.Inc()
+		defer HTTPRequestsInFlight.Dec()
 
 		// Wrap response writer to capture status code
 		wrapped := &responseWriter{
@@ -105,8 +111,8 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		duration := time.Since(start).Seconds()
 		status := strconv.Itoa(wrapped.statusCode)
 
-		HttpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, status).Inc()
-		HttpRequestDuration.WithLabelValues(r.Method, r.URL.Path, status).Observe(duration)
+		HTTPRequestsTotal.WithLabelValues(r.Method, r.URL.Path, status).Inc()
+		HTTPRequestDuration.WithLabelValues(r.Method, r.URL.Path, status).Observe(duration)
 	})
 }
 

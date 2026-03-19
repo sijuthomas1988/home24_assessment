@@ -1,3 +1,4 @@
+// Package handlers provides HTTP request handlers for the webpage analyzer service
 package handlers
 
 import (
@@ -16,6 +17,7 @@ func init() {
 	log.Println("[INFO] Templates loaded successfully from templates/*.html")
 }
 
+// HomeHandler handles requests to the home page, serving the analyzer form on GET and processing analysis on POST
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		log.Printf("[INFO] Serving home page to %s", r.RemoteAddr)
@@ -23,6 +25,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("[ERROR] Failed to render template: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 		return
 	}
@@ -63,6 +66,7 @@ func handleAnalysis(w http.ResponseWriter, r *http.Request) {
 		if renderErr != nil {
 			log.Printf("[ERROR] Failed to render error template: %v", renderErr)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 		return
 	}
@@ -75,5 +79,6 @@ func handleAnalysis(w http.ResponseWriter, r *http.Request) {
 	if renderErr != nil {
 		log.Printf("[ERROR] Failed to render results template: %v", renderErr)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 }

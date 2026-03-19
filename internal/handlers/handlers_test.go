@@ -12,7 +12,7 @@ import (
 
 func init() {
 	// Create test templates directory
-	if err := os.MkdirAll("testdata/templates", 0755); err == nil {
+	if err := os.MkdirAll("testdata/templates", 0o755); err == nil {
 		// Create a simple test template
 		testTemplate := `<!DOCTYPE html>
 <html>
@@ -24,7 +24,7 @@ func init() {
 {{if and (not .Error) .URL}}<div>Analysis Results</div>{{end}}
 </body>
 </html>`
-		os.WriteFile("testdata/templates/index.html", []byte(testTemplate), 0644)
+		os.WriteFile("testdata/templates/index.html", []byte(testTemplate), 0o644)
 	}
 
 	// Override the templates variable with test template
@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestHomeHandler_GET(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 	w := httptest.NewRecorder()
 
 	HomeHandler(w, req)

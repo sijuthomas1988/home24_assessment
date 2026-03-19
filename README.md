@@ -359,88 +359,16 @@ rate(analysis_total{status="success"}[5m]) / rate(analysis_total[5m])
 - 🌐 **Web Analyzer** on port 8080
 - 📊 **Prometheus** on port 9090 (metrics collection)
 - 📈 **Grafana** on port 3000 (visualization)
-- 📁 **Pre-configured Dashboard** (`grafana-dashboard.json`)
 - ⚙️ **Prometheus Config** (`prometheus.yml`)
 
 **Access Points:**
 - 🌐 Web Analyzer: http://localhost:8080
 - 📊 Prometheus: http://localhost:9090
-- 📈 Grafana: http://localhost:3000 (admin/admin)
-
-## 🔄 CI/CD Pipeline
-
-The project includes a comprehensive CI/CD pipeline using GitHub Actions for automated testing, building, and deployment.
-
-### 🎯 Continuous Integration
-
-**Automated on every push and pull request:**
-
-1. **🔍 Linting & Formatting**
-   - golangci-lint with comprehensive checks
-   - gofmt validation
-   - Code style enforcement
-
-2. **🔒 Security Scanning**
-   - Gosec static security analyzer
-   - SARIF reports uploaded to GitHub Security
-   - Trivy container vulnerability scanning
-
-3. **🧪 Multi-Version Testing**
-   - Tests run on Go 1.21, 1.22, and 1.23
-   - Race condition detection
-   - Code coverage reporting (Codecov integration)
-
-4. **🏗️ Multi-Platform Builds**
-   - Linux (amd64, arm64)
-   - macOS (amd64, arm64)
-   - Windows (amd64)
-
-5. **🐳 Docker Build & Push**
-   - Multi-arch images (amd64, arm64)
-   - Build cache optimization
-   - Automated tagging (branch, PR, SHA)
-
-6. **✅ Integration Tests**
-   - Docker Compose stack validation
-   - Health check verification
-   - End-to-end analysis tests
-
-### 🚀 Continuous Deployment
-
-**Automated on version tags (v*.*.*):**
-
-- Multi-platform binary releases
-- Docker image publishing with version tags
-- Automated changelog generation
-- GitHub Release creation with artifacts
-- Checksum generation for binaries
 
 ### 📋 Workflow Files
 
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI pipeline
-- **[.github/workflows/release.yml](.github/workflows/release.yml)** - Release automation
 
-### 🎨 Pipeline Visualization
-
-```
-┌─────────────┐
-│  Git Push   │
-└──────┬──────┘
-       │
-       ├─────▶ Lint ────────────────┐
-       ├─────▶ Security Scan ───────┤
-       ├─────▶ Test (Go 1.21) ──────┤
-       ├─────▶ Test (Go 1.22) ──────┼──▶ All Checks Pass
-       ├─────▶ Test (Go 1.23) ──────┤
-       ├─────▶ Build Binaries ──────┤
-       ├─────▶ Docker Build ─────────┤
-       └─────▶ Integration Tests ────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │  Merge/Deploy│
-              └──────────────┘
-```
 
 ## 📐 Architecture
 
