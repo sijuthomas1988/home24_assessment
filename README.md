@@ -54,7 +54,6 @@ The analyzer provides the following information about any given URL:
 - 🚦 **Rate Limit Metrics**: Track violations and active visitors
 - ❌ **Error Tracking**: Comprehensive error metrics by type and operation
 - 📝 **Structured Logging**: Multi-level logging (INFO, WARN, ERROR, DEBUG)
-- 📊 **Grafana Ready**: Pre-configured for Grafana dashboards and alerts
 
 ## 📋 Prerequisites
 
@@ -236,34 +235,6 @@ internal/
     └── ratelimit_test.go     # 14 test cases
 ```
 
-### ✅ What's Tested
-
-**🔍 Analyzer Package:**
-- 📄 HTML version detection (HTML5, HTML 4.01, XHTML)
-- 🔐 Login form identification
-- 🌐 URL analysis with mock servers
-- ❌ HTTP error handling
-- 🔗 Link categorization (internal/external/inaccessible)
-- 📭 Empty and invalid responses
-- 📊 Heading counting
-
-**🎯 Handlers Package:**
-- 📥 GET and POST request handling
-- ⚠️ Empty and invalid URL validation
-- 📦 Large response handling
-- 🔤 Special characters in content
-- 🔀 Concurrent request handling
-- 🚫 Method validation (405 errors)
-
-**🛡️ Middleware Package:**
-- ⏱️ Rate limiting enforcement
-- 💥 Burst handling
-- 👤 Per-IP tracking
-- 🔍 IP extraction from headers (X-Forwarded-For, X-Real-IP)
-- 🧹 Visitor cleanup
-- 🔀 Concurrent request handling
-- 🔄 Rate limit recovery
-
 ## 🔧 Technical Details
 
 ### 📚 Dependencies
@@ -325,17 +296,6 @@ The application includes comprehensive structured logging at multiple levels:
 - ❌ **Errors**: All failures with context (URL, operation, error details)
 - 📈 **Performance Metrics**: Operation durations, worker counts, link statistics
 
-**💡 Example Log Output:**
-```
-[INFO] Rate limiter initialized: 20 requests/minute, burst: 5
-[INFO] Analyzer HTTP clients initialized (MaxIdle: 100, Timeout: 30s)
-[INFO] Templates loaded successfully from templates/*.html
-[INFO] Server ready and listening on http://localhost:8080
-[INFO] Request allowed: IP: 127.0.0.1, Method: POST, Path: /
-[INFO] Starting analysis for URL: https://example.com
-[INFO] Fetched URL https://example.com with status: 200
-[INFO] Read 1256 bytes from https://example.com
-[INFO] Analysis completed for https://example.com in 2.3s
 ```
 
 ## 📊 Observability & Monitoring
@@ -392,51 +352,6 @@ rate(errors_total[5m])
 rate(analysis_total{status="success"}[5m]) / rate(analysis_total[5m])
 ```
 
-### 📊 Grafana Integration
-
-To visualize metrics with Grafana:
-
-1. **Add Prometheus as data source:**
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'webpage-analyzer'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ['localhost:8080']
-```
-
-2. **Create dashboard with panels:**
-   - 📈 Request rate over time
-   - ⏱️ Response time percentiles (p50, p95, p99)
-   - 🎯 Analysis duration trends
-   - 🚦 Rate limit violations
-   - 👥 Active visitors gauge
-   - ❌ Error rates by type
-
-3. **Set up alerts:**
-   - High error rate (>5%)
-   - Slow response times (p95 > 2s)
-   - Rate limit violations spike
-   - Analysis failures
-
-### 🛠️ Monitoring Stack Setup
-
-**Quick Start with Full Observability Stack:**
-
-The project includes a complete monitoring stack with Prometheus and Grafana. Use the provided `docker-compose.observability.yml`:
-
-```bash
-# Start the full observability stack
-docker-compose -f docker-compose.observability.yml up -d
-
-# View logs
-docker-compose -f docker-compose.observability.yml logs -f
-
-# Stop the stack
-docker-compose -f docker-compose.observability.yml down
-```
-
 **What's Included:**
 - 🌐 **Web Analyzer** on port 8080
 - 📊 **Prometheus** on port 9090 (metrics collection)
@@ -449,13 +364,6 @@ docker-compose -f docker-compose.observability.yml down
 - 📊 Prometheus: http://localhost:9090
 - 📈 Grafana: http://localhost:3000 (admin/admin)
 
-**Grafana Setup:**
-1. Login to Grafana (admin/admin)
-2. Add Prometheus data source:
-   - URL: `http://prometheus:9090`
-   - Access: Server (default)
-3. Import the dashboard from `grafana-dashboard.json`
-4. Start analyzing URLs and watch the metrics!
 
 ## 🐳 Docker Deployment
 
@@ -469,81 +377,3 @@ The application is fully containerized with multi-stage Docker builds for optima
 - 🔒 **Security**: Statically linked binary with no CGO dependencies
 - 💚 **Health checks**: Built-in container health monitoring
 - 📦 **Small size**: Final image ~25MB (vs ~1GB+ for full Go image)
-
-### 📝 Dockerfile Highlights
-
-```dockerfile
-# Build stage - compiles the application
-FROM golang:1.23-alpine AS builder
-# ... build process with tests
-
-# Runtime stage - minimal container
-FROM alpine:latest
-# ... only includes binary and templates
-```
-
-### 🌍 Environment Variables
-
-- 🕐 `TZ`: Timezone (default: UTC)
-
-### 💪 Resource Limits (docker-compose.yml)
-
-- 🖥️ **CPU Limit**: 1.0 core
-- 💾 **Memory Limit**: 512MB
-- ⚙️ **CPU Reservation**: 0.5 core
-- 📊 **Memory Reservation**: 256MB
-
-### 📟 Docker Commands Reference
-
-```bash
-# Build image
-make docker-build
-
-# Run container
-make docker-run
-
-# View logs
-make docker-logs
-
-# Stop container
-make docker-stop
-
-# Clean up
-make docker-clean
-
-# Using Docker Compose
-make docker-compose-up      # Start services
-make docker-compose-down    # Stop services
-make docker-compose-logs    # View logs
-make docker-compose-rebuild # Rebuild from scratch
-```
-
-### 🚀 Production Deployment
-
-For production deployments, consider:
-
-1. ⚙️ **Environment Variables**: Configure via `.env` file or compose overrides
-2. 🔒 **Reverse Proxy**: Use nginx/traefik for SSL/TLS termination
-3. 📊 **Monitoring**: Integrate with Prometheus/Grafana
-4. 📝 **Logging**: Use Docker logging drivers (json-file, syslog, etc.)
-5. 📈 **Scaling**: Use Docker Swarm or Kubernetes for horizontal scaling
-6. 🔐 **Secrets**: Use Docker secrets for sensitive configuration
-
-Example with nginx reverse proxy:
-```yaml
-version: '3.8'
-services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - webpage-analyzer
-
-  webpage-analyzer:
-    # ... existing configuration
-```
